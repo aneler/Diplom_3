@@ -29,8 +29,9 @@ public class UserProfileTest {
     private MainPage mainPage;
     private ProfilePage profilePage;
     private RestorePasswordPage restorePasswordPage;
-    private String url;
-    private String clickSource;
+    private User newUser;
+    private String authToken;
+
 
     @Before
     public void setUp() {
@@ -48,7 +49,7 @@ public class UserProfileTest {
     @Test
     public void testProfileOpen(){
         WebDriver driver = driverFactory.getDriver();
-        User newUser = new User(userEmail, password, userName);
+        newUser = new User(userEmail, password, userName);
         Response signUpResponse = apiEndpoints.sendRegisterRequest(newUser);
         signUpResponse.then().statusCode(200);
         driver.get(BASE_URI);
@@ -56,7 +57,7 @@ public class UserProfileTest {
 
         //авторизоваться с данными только что зарегистрированного пользователя
         loginPage.fillAndSubmitLoginData(newUser.getEmail(), newUser.getPassword());
-        String authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 20);
+        authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 20);
 
         if (authToken == null || authToken.isEmpty()) {
             System.err.println("Failed to fetch authToken from localStorage");
@@ -75,15 +76,14 @@ public class UserProfileTest {
         assertEquals("Email пользователя в профиле не соответствует email переданному при регистрации: ", userEmail, currentEmail);
         String currentName = profilePage.getName();
         assertEquals("Имя пользователя в профиле не соответствует имени переданному при регистрации: ", userName, currentName);
-
-
-        //удалить созданного пользователя
-        Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
-        deleteUserResponse.then().assertThat().statusCode(202);
     }
 
     @After
     public void tearDown() {
+        if (authToken != null && !authToken.isEmpty()) {
+            Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
+            deleteUserResponse.then().assertThat().statusCode(202);
+        }
         if(driverFactory.getDriver() != null) {
             driverFactory.getDriver().quit();
         }

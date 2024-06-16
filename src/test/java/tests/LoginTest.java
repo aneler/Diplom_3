@@ -39,6 +39,9 @@ public class LoginTest {
     private String url;
     private String clickSource;
 
+    private User newUser;
+    private String authToken;
+
     @Before
     public void setUp() {
         driverFactory.initDriver();
@@ -72,7 +75,7 @@ public class LoginTest {
     public void testLogin(){
         WebDriver driver = driverFactory.getDriver();
         driver.get(url);
-        User newUser = new User(userEmail, password, userName);
+        newUser = new User(userEmail, password, userName);
         Response signUpResponse = apiEndpoints.sendRegisterRequest(newUser);
         signUpResponse.then().statusCode(200);
 
@@ -93,7 +96,7 @@ public class LoginTest {
         }
         //авторизоваться с данными только что зарегистрированного пользователя
         loginPage.fillAndSubmitLoginData(newUser.getEmail(), newUser.getPassword());
-        String authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 10);
+        authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 10);
 
         if (authToken == null || authToken.isEmpty()) {
             System.err.println("Failed to fetch authToken from localStorage");
@@ -104,13 +107,14 @@ public class LoginTest {
         header.clickAccountBth();
         String currentEmail = profilePage.getEmail();
         assertEquals("Email пользователя в профиле не соответствует имени переданному при регистрации: ", userEmail, currentEmail);
-        //удалить созданного пользователя
-        Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
-        deleteUserResponse.then().assertThat().statusCode(202);
     }
 
     @After
     public void tearDown() {
+        if (authToken != null && !authToken.isEmpty()) {
+            Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
+            deleteUserResponse.then().assertThat().statusCode(202);
+        }
         if(driverFactory.getDriver() != null) {
             driverFactory.getDriver().quit();
         }

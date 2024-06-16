@@ -33,6 +33,8 @@ public class OpenConstructorTest {
     private LoginPage loginPage;
     private MainPage mainPage;
     private String clickSource;
+    private User newUser;
+    private String authToken;
 
     @Before
     public void setUp() {
@@ -60,14 +62,14 @@ public class OpenConstructorTest {
     public void testOpenBurgerConstructor(){
         WebDriver driver = driverFactory.getDriver();
         driver.get(BASE_URI);
-        User newUser = new User(userEmail, password, userName);
+        newUser = new User(userEmail, password, userName);
         Response signUpResponse = apiEndpoints.sendRegisterRequest(newUser);
         signUpResponse.then().statusCode(200);
 
         //авторизоваться и открыть личный кабинет пользователя
         mainPage.clickLoginBtn();
         loginPage.fillAndSubmitLoginData(newUser.getEmail(), newUser.getPassword());
-        String authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 10);
+        authToken = Utils.fetchAuthTokenFromLocalStorage(driver, 10);
         if (authToken == null || authToken.isEmpty()) {
             System.err.println("Failed to fetch authToken from localStorage");
             return;
@@ -92,14 +94,14 @@ public class OpenConstructorTest {
         String curUrl = driver.getCurrentUrl();
         assertEquals(BASE_URI, curUrl);
         assertEquals(true, Utils.isTextPresent(driver, "Соберите бургер", 3));
-
-        //удалить созданного пользователя
-        Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
-        deleteUserResponse.then().assertThat().statusCode(202);
     }
 
     @After
     public void tearDown() {
+        if (authToken != null && !authToken.isEmpty()) {
+            Response deleteUserResponse = apiEndpoints.sendDeleteUserRequest(authToken);
+            deleteUserResponse.then().assertThat().statusCode(202);
+        }
         if(driverFactory.getDriver() != null) {
             driverFactory.getDriver().quit();
         }
